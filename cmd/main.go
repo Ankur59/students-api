@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ankur59/students-api/internal/config"
+	"github.com/ankur59/students-api/internal/http/handlers/students"
 )
 
 func main() {
@@ -19,32 +20,35 @@ func main() {
 	router := http.NewServeMux()
 	done := make(chan os.Signal, 1)
 
+	router.HandleFunc("POST /", students.New())
 	// Learn about this signals
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	server := http.Server{
-		Addr:    cfg.Address,
-		Handler: router,
-	}
-	go func() {
-
-		err := server.ListenAndServe()
-
-		if err != nil {
-			log.Fatal("Server failed to start")
+	{
+		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+		server := http.Server{
+			Addr:    cfg.Address,
+			Handler: router,
 		}
-	}()
+		go func() {
+			log.Println("🚀 Server started on http://localhost:8080")
+			err := server.ListenAndServe()
 
-	<-done
+			if err != nil {
+				log.Fatal("Server failed to start")
+			}
+		}()
 
-	slog.Info("Gracefully shutting down the server")
+		<-done
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		slog.Info("Gracefully shutting down the server")
 
-	defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
-	if err := server.Shutdown(ctx); err != nil {
-		slog.Error("Failed to shut  down server", slog.String("error", err.Error()))
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			slog.Error("Failed to shut  down server", slog.String("error", err.Error()))
+		}
+
+		slog.Info("server shutdown successfully")
 	}
-
-	slog.Info("server shutdown successfully")
 }
